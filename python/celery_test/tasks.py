@@ -4,8 +4,9 @@ Created on 2013-7-21
 @author: Luo Fei
 '''
 
-from celery import Celery
-celery = Celery('tasks',broker='amqp://guest@localhost//')
+from __future__ import absolute_import
+from celery_test.celery import celery
+
 
 @celery.task
 def add(x,y):
