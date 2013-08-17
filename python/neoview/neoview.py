@@ -184,8 +184,8 @@ def init_env(str, config_file):
             new_lines.append(line)
     
     with open(config_file, 'w') as f1:
-       for line in new_lines:
-           f1.write(line)
+        for line in new_lines:
+            f1.write(line)
              
 
 def build_neoview():
