@@ -3,11 +3,6 @@ Created on Aug 15, 2013
 
 @author: Luo Fei
 '''
-'''
-Created on Aug 13, 2013
-
-@author: Luo Fei
-'''
 
 import os
 import subprocess
