@@ -11,16 +11,30 @@ import time
 import sys
 import logging
 import zipfile 
+import  ConfigParser
 
 logger = logging.getLogger("buildneoview")
-hdlr = logging.FileHandler('test.log')
+hdlr = logging.FileHandler('build_neoview.log')
 logger.addHandler(hdlr)
 logger.setLevel(logging.DEBUG)
 
-devenv = r"D:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.exe"
-project_dir = r"D:\VS-Project\neoview-windows\WindowsClient"
-resource = os.path.join(project_dir, 'SetUp', 'Resources')
-winddk = r"D:\WinDDK\7600.16385.1\bin\setenv.bat D:\WinDDK\7600.16385.1\ "
+# devenv = r"D:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\devenv.exe"
+# project_dir = r"D:\VS-Project\neoview-windows\WindowsClient"
+# resource = os.path.join(project_dir, 'SetUp', 'Resources')
+# winddk = r"D:\WinDDK\7600.16385.1\bin\setenv.bat D:\WinDDK\7600.16385.1\ "
+
+def __init_environment():
+    global  DEVENV,PROJECT_DIR,RESOURCE,WINDDK,ZIP_CONTENTS,BOOT
+    config = ConfigParser.RawConfigParser()
+    config.read('neoview.conf')
+    DEVENV = config.get('build', 'devenv')
+    PROJECT_DIR = config.get('build', 'base_dir')
+    RESOURCE = config.get('build', 'resource_dir')
+    WINDDK = config.get('build', 'winddk')
+    ZIP_CONTENTS = config.get('zip','contents')
+    BOOT = config.get('build', 'boot')
+
+
 
 def run_commands(cmds, logger):
     if isinstance(cmds, list):
@@ -74,14 +88,14 @@ def build_spice():
     project = ['NeoConnector', 'NeoView', ' UnInstall']
     cmds = []
     for pj in project:
-        cmd = '"%s" Spice.sln /build "release|x86" /project %s' % (devenv, pj)
+        cmd = '"%s" Spice.sln /build "release|x86" /project %s' % (DEVENV, pj)
         cmds.append(cmd)
     return cmds
 
 
 @build                      
 def build_redc():  
-    cmd = '"%s" redc.sln /build release /project %s' % (devenv, 'redc') 
+    cmd = '"%s" redc.sln /build release /project %s' % (DEVENV, 'redc') 
     return cmd
 
 
@@ -89,14 +103,14 @@ def build_redc():
 def build_usb_service():
     cmds = []
     for x in ['Win32', 'x64']:
-        cmd = '"%s" UsbService.sln /build  "release|%s" /project %s' % (devenv, x, 'UsbService') 
+        cmd = '"%s" UsbService.sln /build  "release|%s" /project %s' % (DEVENV, x, 'UsbService') 
         cmds.append(cmd)
     return cmds
 
 @build 
 def build_u2ecdll():
     for x in ['Win32']:
-        cmd = '"%s" UsbService.sln /build  "release dll|%s" /project %s' % (devenv, x, 'u2ec') 
+        cmd = '"%s" UsbService.sln /build  "release dll|%s" /project %s' % (DEVENV, x, 'u2ec') 
     return cmd
     
 def build_driver(base_dir, winddk, resource):
@@ -157,18 +171,18 @@ def build_driver(base_dir, winddk, resource):
                       
 
 
-def build_spice_setup_c(project_dir, devenv):
+def build_spice_setup_c(project_dir):
     os.chdir(project_dir)
 
-    cmd = '"%s" Spice.sln /build "release|x86" /project %s' % (devenv, 'SetUp')
+    cmd = '"%s" Spice.sln /build "release|x86" /project %s' % (DEVENV, 'SetUp')
     run_command(cmd, logger)
     
     
-def build_spice_setup_exe(project_dir, devenv):
+def build_spice_setup_exe(project_dir):
     project = os.path.join(project_dir, 'Setup_VC')
     os.chdir(project)
     
-    cmd = '"%s" Setup_VC.sln /build "release|win32" /project %s' % (devenv, 'SetUp_VC')
+    cmd = '"%s" Setup_VC.sln /build "release|win32" /project %s' % (DEVENV, 'SetUp_VC')
     run_command(cmd, logger)
 
 
@@ -190,77 +204,72 @@ def init_env(str, config_file):
 
 def build_neoview():
     try:
-
+        __init_environment()
         
         
         # init env
-        u2ec_file = r'D:\VS-Project\neoview-windows\WindowsClient\u2ec\UserInterface\UsbService\u2ec\u2ec.vcproj'
-        u2ec_str = r'AdditionalIncludeDirectories="D:\boot\boost_1_50_0;"'
-        usb_str = r'AdditionalIncludeDirectories="D:\boot\boost_1_50_0;..\Consts;..\UsbService"' 
-        usb_file = r'D:\VS-Project\neoview-windows\WindowsClient\u2ec\UserInterface\UsbService\UsbService.vcproj'
+      
+#         u2ec_str = r'AdditionalIncludeDirectories="D:\boot\boost_1_50_0;"'
+#         usb_str = r'AdditionalIncludeDirectories="D:\boot\boost_1_50_0;..\Consts;..\UsbService"' 
+        u2ec_str =  'AdditionalIncludeDirectories="%s"' % BOOT
+        usb_str = 'AdditionalIncludeDirectories="%s;..\Consts;..\UsbService"' % BOOT
+#         u2ec_file = r'D:\VS-Project\neoview-windows\WindowsClient\u2ec\UserInterface\UsbService\u2ec\u2ec.vcproj'
+        u2ec_file = os.path.join(PROJECT_DIR,r'u2ec\UserInterface\UsbService\u2ec\u2ec.vcproj')
+#         usb_file = r'D:\VS-Project\neoview-windows\WindowsClient\u2ec\UserInterface\UsbService\UsbService.vcproj'
+        usb_file = os.path.join(PROJECT_DIR,r'u2ec\UserInterface\UsbService\UsbService.vcproj')
         init_env(usb_str, usb_file)
         init_env(u2ec_str, u2ec_file)
         
         
         # build spice
-        spice_dir = os.path.join(project_dir, 'bin', 'Release')
-        build_spice(project_path=project_dir, logger=logger, src=spice_dir, dist=resource, suffix='.exe')
+        spice_dir = os.path.join(PROJECT_DIR, 'bin', 'Release')
+        build_spice(project_path=PROJECT_DIR, logger=logger, src=spice_dir, dist=RESOURCE, suffix='.exe')
          
         # build redc
-        redc_path = os.path.join(project_dir, r'spicec\client\windows')
-        redc_dir = os.path.join(project_dir, r'spicec\client\windows\Release')
-        build_redc(project_path=redc_path, logger=logger, src=redc_dir, dist=resource, suffix='.exe')    
+        redc_path = os.path.join(PROJECT_DIR, r'spicec\client\windows')
+        redc_dir = os.path.join(PROJECT_DIR, r'spicec\client\windows\Release')
+        build_redc(project_path=redc_path, logger=logger, src=redc_dir, dist=RESOURCE, suffix='.exe')    
        
         # build usb
 #         usb_serveice_path = r'D:\VS-Project\neoview-windows\WindowsClient\u2ec\UserInterface\UsbService'
 #         usb_service_dir = r'D:\VS-Project\neoview-windows\WindowsClient\u2ec\UserInterface\Bin'
-        usb_serveice_path = os.path.join(project_dir, r'u2ec\UserInterface\UsbService')
-        usb_service_dir = os.path.join(project_dir, r'u2ec\UserInterface\Bin')
-        build_usb_service(project_path=usb_serveice_path, logger=logger, src=usb_service_dir, dist=resource, suffix='.exe')   
+        usb_serveice_path = os.path.join(PROJECT_DIR, r'u2ec\UserInterface\UsbService')
+        usb_service_dir = os.path.join(PROJECT_DIR, r'u2ec\UserInterface\Bin')
+        build_usb_service(project_path=usb_serveice_path, logger=logger, src=usb_service_dir, dist=RESOURCE, suffix='.exe')   
         
         # build u2ecdll
     #     u2ecdll_path = r'D:\VS-Project\neoview-windows\WindowsClient\u2ec\UserInterface\UsbService'
     #     u2ecdll_dir = r'D:\VS-Project\neoview-windows\WindowsClient\u2ec\UserInterface\Bin'
-        u2ecdll_path = os.path.join(project_dir, r'u2ec\UserInterface\UsbService')
-        u2ecdll_dir = os.path.join(project_dir, r'u2ec\UserInterface\Bin')
-        build_u2ecdll(project_path=u2ecdll_path, logger=logger, src=usb_service_dir, dist=resource, suffix='.exe')      
+        u2ecdll_path = os.path.join(PROJECT_DIR, r'u2ec\UserInterface\UsbService')
+        u2ecdll_dir = os.path.join(PROJECT_DIR, r'u2ec\UserInterface\Bin')
+        build_u2ecdll(project_path=u2ecdll_path, logger=logger, src=usb_service_dir, dist=RESOURCE, suffix='.exe')      
         
         # build driver
-        base_dir = os.path.join(project_dir, r'u2ec\Drivers')
-        build_driver(base_dir, winddk, resource)  
+        base_dir = os.path.join(PROJECT_DIR, r'u2ec\Drivers')
+        build_driver(base_dir, WINDDK, RESOURCE)  
         
         
-        build_spice_setup_c(project_dir, devenv)
-        build_spice_setup_exe(project_dir, devenv)
+        build_spice_setup_c(PROJECT_DIR)
+        build_spice_setup_exe(PROJECT_DIR)
         return True
     except Exception, ex:
         print ex
     
     
- 
- 
- 
 
-
-def create_zip():            
-    exe_file = r"D:\VS-Project\neoview-windows\WindowsClient\Setup_VC\Release\Setup.exe"
-    changelog = r"D:\VS-Project\neoview-windows\WindowsClient\Setup_VC\changelog.txt"
+def create_zip():    
+    contents = ZIP_CONTENTS.replace('\n','').split(',')        
     name = 'neoview.zip'
-
+    
     f = zipfile.ZipFile(name, 'w' , zipfile.ZIP_DEFLATED) 
-    f.write(exe_file, 'neoview\Setup.exe')
-    f.write(changelog, 'neoview\changelog.txt')
+    for con in contents:
+        f.write(con, os.path.basename(con))
     f.close
-  
-     
     
 if __name__ == '__main__':
-    
         
     build = build_neoview()
     if build == True:
-        
+         
         create_zip()
 
-
-    
