@@ -253,7 +253,7 @@ def build_neoview():
         build_spice_setup_exe(PROJECT_DIR)
         return True
     except Exception, ex:
-        print ex
+        logger.exception(ex)
     
     
 
